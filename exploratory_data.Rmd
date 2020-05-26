@@ -1,0 +1,244 @@
+---
+title: "Exploratory Data Analysis"
+output:
+  html_notebook:
+      code_folding: none
+---
+
+## Week 1
+
+***
+
+### 1. Exploratory Graphs
+
+#### Annual average PM2.5 averaged over the period 2008 - 2010
+
+```{r}
+download.file(url = "https://raw.githubusercontent.com/jtleek/modules/master/04_ExploratoryAnalysis/exploratoryGraphs/data/avgpm25.csv", 
+              destfile = "./Data/avgpm25.csv",
+              method = "curl")
+
+```
+
+```{r}
+pollution <- read.csv("./Data/avgpm25.csv",
+                      colClasses = c("numeric", "character",
+                                     "factor", "numeric", "numeric"))
+head(pollution)
+```
+
+#### Research question
+
+> Do any counties exceed the EPA standard of $12\mu g/m_{3}$?
+
+#### Simple summaries
+
+```{r}
+summary(pollution$pm25)
+boxplot(pollution$pm25, col = "blue")
+hist(pollution$pm25, col = "green", breaks = 50)
+rug(pollution$pm25)
+```
+
+#### Overlaying features
+
+We can overlay features, for example a threshold (in this case the EPA standard), or the median.
+
+```{r}
+boxplot(pollution$pm25, col = "blue")
+abline(h = 12)
+hist(pollution$pm25, col  = "green")
+abline(v = 12, lwd = 2)
+abline(v = median(pollution$pm25), col  = "magenta", lwd = 4)
+
+```
+
+#### Plotting categorical data
+
+We can use `barplot` to plot categorical data, for example counties per region.
+
+```{r}
+barplot(table(pollution$region), col = "wheat",
+        main = "Number of Counties per Region")
+```
+
+#### Other simple summaries
+
+Two dimensions:
+
+- Multiple/overlayed 1D plots 
+- Scatterplots
+- Smoothed scatterplots
+
+More than two dimensions:
+
+- Multiple/overlayed 2D plots; coplots
+- Using colour, size and shape to add dimensions
+- Spinning plots
+- Actual 3D plots (not that useful)
+
+#### Multiple boxplots
+
+```{r}
+boxplot(pm25 ~ region, data = pollution, col = "red")
+```
+
+#### Scatterplots
+
+```{r}
+with(pollution, plot(latitude, pm25, col = region))
+abline(h = 12, lwd = 2, lty = 2)
+```
+
+**NB**: Here the colours represent eastern and western counties.
+
+#### Multiple scatterplots
+```{r}
+par(mfrow = c(1,2), mar = c(5, 4, 2, 1))
+with(subset(pollution, region = "west"), plot(latitude, pm25, main =  "West"))
+with(subset(pollution, region = "east"), plot(latitude, pm25, main = "East"))
+```
+
+***
+
+### 2. Plotting systems in R
+
+#### base R
+
+- Included with the base R installation.
+- "Artist's pallete" model: start with a blank canvas and build from there.
+   - Usually start with a `plot` function.
+   - Then use annotation functions to add or modify (`text`, `lines`, `points`, `axis`).
+- Convenient, but cannot go back once plot has started.
+- Difficult to "translate" to others, just a series of commands.
+- Everything has to be set and controlled manually.
+
+```{r}
+library(datasets)
+data(cars)
+with(cars, plot(speed, dist))
+```
+
+#### lattice
+
+- From the `lattice` package.
+- Plots are created with a *single* function call (`xyplot`, `bwplot`, etc.)
+- Most useful for conditioning plots or coplots, i.e. how y changes with x across levels of z.
+- Things like margins and spacing are set automatically.
+- Good for putting many, many plots on a screen.
+- Sometimes awkward to specify in a single function call.
+- Annotation in the plot is not possible after generated.
+- Use of panel functions and subscripts is unwieldy.
+
+```{r}
+library(lattice)
+state <- data.frame(state.x77, region = state.region)
+xyplot(Life.Exp ~ Income | region, data = state, layout = c(4,1))
+```
+
+#### ggplot2
+
+- From the `ggplot2`/`tidyverse` package.
+- Automatically deals with spacings, text, titles but also allows you to annotate by "adding" to a plot.
+- Superficially similar to `lattice` but generally more intuitive.
+- Default mode makes many choices for you, but can be customised.
+
+```{r}
+library(ggplot2)
+data(mpg)
+qplot(displ, hwy, data = mpg)
+```
+
+### Base plotting in detail
+
+Considerations when making a plot:
+ 
+- Where will the plot be made? On screen or in a file?
+- How will the plot be used?
+  - For temporary viewing on screen?
+  - For web presentation?
+  - For a published paper?
+  - For a presentation?
+- How much data is going into the plot?
+- Does it need to be dynamically resizable?
+- What graphics system will you use?
+  - **NB**: Plotting systems generally *cannot* be mixed.
+  
+#### Base graphics
+
+- Most commonly used, very powerful for creating 2D graphics.
+- Created in two *phases*:
+  1. Initialising a new plot,
+  2. Annotating an existing plot.
+- Calling `plot(x, y)` or `hist()` will launch a *graphics device* and initalise a new plot on the device.
+- If arguments are not of some special class, the *default* method for `plot` is called.
+  - This function has *many* arguments, letting you set the title, axes labels, etc.
+  - Parameters are documented in `?par`.
+  
+For example:
+```{r}
+library(datasets)
+hist(airquality$Ozone) # Draw a new plot.
+with(airquality, plot(Wind, Ozone)) # Draw a new plot.
+boxplot(Ozone ~ Month, airquality, xlab = "Month", ylab = "Ozone (ppb)") # Draw a new plot.
+```
+
+#### Some important base parameters
+
+- `pch`: plotting symbol (default = open circle)
+- `lty`: line type (default = solid line)
+- `lwd`: line width
+- `col`: plotting colour, can be specified as a number string, hex code
+  - **NB**: `colours()` function will give you a vector of colours by name
+- `xlab`: character string for the x-axis label
+- `ylab`: character string for the y-axis label
+
+The `par()` function can specify *global* parameters that affect * all*  plots in an R session. 
+These can also be overridden when specified as arguments in specific plotting functions.
+
+- `las`: the orientation of the axis labels
+- `bg`: background colour
+- `mar`: margin size
+- `oma`: outer margin size (default = 0)
+- `mfrow`: plots per row, column (fill matrix row-wise)
+- `mfcol`: plots per row, column (fill matrix column-wise)
+
+**NB**: You can find default values by using `par("")`, *e.g.*:
+
+```{r}
+par("bg")
+par("mar")
+```
+
+#### Base plotting functions
+
+- `plot`: make a scatterplot or other type of plot
+- `lines`: add lines to a plot, given a vector of x-y values, this function will connect the dots
+- `points`: add points to a plot
+- `text`: add text labels *within* a plot using specificed x-y coordinates
+- `title`: adds annotations to axes labels, title, subtitle, outer margin
+- `mtext`: add text labels *outside*  a plot (inner or outer margins)
+- `axis`: add axis ticks or labels
+
+For example:
+```{r}
+with(airquality, plot(Wind, Ozone, main = "Ozone and Wind in New York City", type = "n"))
+with(subset(airquality, Month == 5), points(Wind, Ozone, col = "blue"))
+with(subset(airquality, Month != 5), points(Wind, Ozone, col = "red"))
+legend("topright", pch = 1, col = c("blue", "red"), legend = c("May", "Other months"))
+```
+```{r}
+with(airquality, plot(Wind, Ozone, main = "Ozone and Wind in New York City", pch = 20))
+model <- lm(Ozone ~ Wind, airquality)
+abline(model, lwd = 2)
+```
+
+```{r}
+par(mfrow = c(1, 3), mar = c(4, 4, 2, 1), oma = c(0, 0, 2, 0))
+with(airquality, {
+        plot(Wind, Ozone, main = "Ozone and Wind")
+        plot(Solar.R, Ozone, main = "Ozone and Solar Radiation")
+        plot(Temp, Ozone, main = "Ozone and Temperature")
+        mtext("Ozone and Weather in New York City", outer = TRUE)
+})
+```
